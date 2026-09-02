@@ -1,22 +1,30 @@
-# This workflow will build a Swift project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
-
-name: Swift
+name: Build IPA
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: macos-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+      - uses: actions/checkout@v4
+
+      - name: Setup XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate and Archive
+        run: |
+          xcodegen generate
+          xcodebuild archive -project MyApp.xcodeproj -scheme MyApp -configuration Release -archivePath build/MyApp.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/MyApp.xcarchive/Products/Applications/MyApp.app Payload/
+          zip -r MyApp.ipa Payload
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-ipa
+          path: MyApp.ipa
