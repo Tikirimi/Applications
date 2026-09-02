@@ -1,0 +1,18 @@
+name: Build
+on: [push]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: xcodebuild build -project MyApp.xcodeproj -scheme MyApp -destination 'generic/platform=iOS' -derivedDataPath DerivedData CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+      - run: |
+          APP=$(find DerivedData -name "*.app" | head -1)
+          mkdir Payload; cp -R "$APP" Payload/
+          zip -r MyApp.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: MyApp.ipa
