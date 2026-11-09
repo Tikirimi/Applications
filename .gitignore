@@ -1,0 +1,16 @@
+# XcodeGen output
+MyApp.xcodeproj/
+
+# Build products
+build/
+DerivedData/
+Payload/
+*.ipa
+*.xcarchive
+
+# Xcode user state
+xcuserdata/
+*.xcworkspace/xcshareddata/
+
+# macOS
+.DS_Store
