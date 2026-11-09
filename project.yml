@@ -2,14 +2,39 @@ name: MyApp
 options:
   bundleIdPrefix: com.yourname
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGNING_ALLOWED: NO
 targets:
   MyApp:
     type: application
     platform: iOS
-    sources: [Sources/MyApp]
+    sources:
+      - path: Sources/MyApp
+      - path: Shared
     settings:
-      INFOPLIST_FILE: Info.plist
-      CODE_SIGN_IDENTITY: ""
-      CODE_SIGNING_REQUIRED: NO
-      CODE_SIGNING_ALLOWED: NO
+      base:
+        INFOPLIST_FILE: Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.MyApp
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: MyAppWidget
+        embed: true
+
+  MyAppWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Sources/MyAppWidget
+      - path: Shared
+    settings:
+      base:
+        INFOPLIST_FILE: Sources/MyAppWidget/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.MyApp.MyAppWidget
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
