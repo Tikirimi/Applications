@@ -59,6 +59,8 @@ struct DesignerView: View {
                 .padding(.bottom, 44)
             }
             .background(Palette.canvas.ignoresSafeArea())
+            .toolbarBackground(Palette.canvas, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .navigationTitle("实时活动")
             .navigationBarTitleDisplayMode(.large)
         }
