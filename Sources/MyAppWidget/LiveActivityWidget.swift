@@ -5,57 +5,58 @@ import WidgetKit
 struct LockScreenView: View {
     let context: ActivityViewContext<DesignActivityAttributes>
 
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: context.state.symbol)
-                .font(.title2)
-                .foregroundStyle(Color(hex: context.state.themeHex))
+    private var percent: String {
+        "\(Int((context.state.progress * 100).rounded()))%"
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(context.state.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                if !context.state.subtitle.isEmpty {
-                    Text(context.state.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(systemName: context.state.symbol)
+                    .font(.system(size: 20, weight: .regular))
+                    .foregroundStyle(.primary)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.state.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
+                    if !context.state.subtitle.isEmpty {
+                        Text(context.state.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if context.state.showProgress {
+                    Text(percent)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            Spacer(minLength: 0)
-
             if context.state.showProgress {
-                Text("\(Int((context.state.progress * 100).rounded()))%")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                ProgressView(value: context.state.progress)
+                    .tint(.primary)
             }
         }
-        .padding(14)
+        .padding(16)
     }
 }
 
 struct DesignActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DesignActivityAttributes.self) { context in
-            VStack(spacing: 10) {
-                LockScreenView(context: context)
-
-                if context.state.showProgress {
-                    ProgressView(value: context.state.progress)
-                        .tint(Color(hex: context.state.themeHex))
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 12)
-                }
-            }
-            .activityBackgroundTint(Color(hex: context.state.themeHex).opacity(0.18))
-            .activitySystemActionForegroundColor(.primary)
+            LockScreenView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Image(systemName: context.state.symbol)
-                        .font(.title3)
-                        .foregroundStyle(Color(hex: context.state.themeHex))
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(.primary)
                         .padding(.leading, 4)
                 }
 
@@ -72,6 +73,7 @@ struct DesignActivityWidget: Widget {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(context.state.title)
                             .font(.headline)
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
                         if !context.state.subtitle.isEmpty {
                             Text(context.state.subtitle)
@@ -85,27 +87,27 @@ struct DesignActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.bottom) {
                     if context.state.showProgress {
                         ProgressView(value: context.state.progress)
-                            .tint(Color(hex: context.state.themeHex))
+                            .tint(.primary)
                             .padding(.horizontal, 4)
                     }
                 }
             } compactLeading: {
                 Image(systemName: context.state.symbol)
-                    .foregroundStyle(Color(hex: context.state.themeHex))
+                    .foregroundStyle(.primary)
             } compactTrailing: {
                 if context.state.showProgress {
                     Text("\(Int((context.state.progress * 100).rounded()))%")
                         .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.primary)
                 } else {
-                    Image(systemName: "circle.fill")
-                        .font(.system(size: 6))
-                        .foregroundStyle(Color(hex: context.state.themeHex))
+                    Circle()
+                        .fill(.primary)
+                        .frame(width: 6, height: 6)
                 }
             } minimal: {
                 Image(systemName: context.state.symbol)
-                    .foregroundStyle(Color(hex: context.state.themeHex))
+                    .foregroundStyle(.primary)
             }
-            .keylineTint(Color(hex: context.state.themeHex))
         }
     }
 }
