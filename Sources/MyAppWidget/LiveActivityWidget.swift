@@ -3,82 +3,53 @@ import SwiftUI
 import UIKit
 import WidgetKit
 
-/// 图片 + 图标的统一缩略图，锁屏和灵动岛共用。
-struct Thumb: View {
-    let base64: String
-    let symbol: String
-    let size: CGFloat
-
-    private var radius: CGFloat { size * 0.28 }
-
-    private var decoded: UIImage? {
-        guard !base64.isEmpty, let data = Data(base64Encoded: base64) else { return nil }
-        return UIImage(data: data)
-    }
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(Color.white.opacity(0.10))
-
-            if let image = decoded {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: size, height: size)
-                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-            } else {
-                Image(systemName: symbol)
-                    .font(.system(size: size * 0.42, weight: .regular))
-                    .foregroundStyle(.primary)
-            }
-        }
-        .frame(width: size, height: size)
-    }
+private func decode(_ base64: String) -> UIImage? {
+    guard !base64.isEmpty, let data = Data(base64Encoded: base64) else { return nil }
+    return UIImage(data: data)
 }
 
+/// 锁屏：有图 → 左图右文；无图 → 只有两行文字。
 struct LockScreenView: View {
     let context: ActivityViewContext<DesignActivityAttributes>
 
-    private var percent: String {
-        "\(Int((context.state.progress * 100).rounded()))%"
-    }
+    private var image: UIImage? { decode(context.state.imageBase64) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Thumb(base64: context.state.imageBase64,
-                      symbol: context.state.symbol,
-                      size: 52)
+        Group {
+            if let image {
+                HStack(alignment: .center, spacing: 14) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 54, height: 54)
+                        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(context.state.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    if !context.state.subtitle.isEmpty {
-                        Text(context.state.subtitle)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
+                    texts
                 }
-
-                Spacer(minLength: 0)
-
-                if context.state.showProgress {
-                    Text(percent)
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            if context.state.showProgress {
-                ProgressView(value: context.state.progress)
-                    .tint(.primary)
+            } else {
+                texts
             }
         }
         .padding(16)
+    }
+
+    private var texts: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(context.state.title)
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+
+            if !context.state.subtitle.isEmpty {
+                Text(context.state.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -87,20 +58,17 @@ struct DesignActivityWidget: Widget {
         ActivityConfiguration(for: DesignActivityAttributes.self) { context in
             LockScreenView(context: context)
         } dynamicIsland: { context in
-            DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) {
-                    Thumb(base64: context.state.imageBase64,
-                          symbol: context.state.symbol,
-                          size: 40)
-                        .padding(.leading, 4)
-                }
+            let image = decode(context.state.imageBase64)
 
-                DynamicIslandExpandedRegion(.trailing) {
-                    if context.state.showProgress {
-                        Text("\(Int((context.state.progress * 100).rounded()))%")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                            .padding(.trailing, 4)
+            return DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 34, height: 34)
+                            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .padding(.leading, 6)
                     }
                 }
 
@@ -109,41 +77,42 @@ struct DesignActivityWidget: Widget {
                         Text(context.state.title)
                             .font(.headline)
                             .foregroundStyle(.primary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+
                         if !context.state.subtitle.isEmpty {
                             Text(context.state.subtitle)
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                                .lineLimit(2)
                         }
                     }
                 }
-
-                DynamicIslandExpandedRegion(.bottom) {
-                    if context.state.showProgress {
-                        ProgressView(value: context.state.progress)
-                            .tint(.primary)
-                            .padding(.horizontal, 4)
-                    }
-                }
             } compactLeading: {
-                Thumb(base64: context.state.imageBase64,
-                      symbol: context.state.symbol,
-                      size: 20)
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 20, height: 20)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
             } compactTrailing: {
-                if context.state.showProgress {
-                    Text("\(Int((context.state.progress * 100).rounded()))%")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.primary)
-                } else {
+                if image == nil {
                     Circle()
                         .fill(.primary)
                         .frame(width: 6, height: 6)
                 }
             } minimal: {
-                Thumb(base64: context.state.imageBase64,
-                      symbol: context.state.symbol,
-                      size: 20)
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 20, height: 20)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                } else {
+                    Circle()
+                        .fill(.primary)
+                        .frame(width: 6, height: 6)
+                }
             }
         }
     }
