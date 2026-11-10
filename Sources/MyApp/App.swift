@@ -32,14 +32,13 @@ struct DesignerView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 30) {
-                    preview
-                    copyEditor
-                    imageEditor
+                VStack(alignment: .leading, spacing: 26) {
+                    copyCard
+                    imageCard
                     actions
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.top, 12)
                 .padding(.bottom, 48)
             }
             .background(Palette.canvas.ignoresSafeArea())
@@ -50,105 +49,74 @@ struct DesignerView: View {
         }
     }
 
-    // MARK: - 预览（有图 / 无图 两套排版）
-
-    private var preview: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            label("预览")
-
-            Group {
-                if let image {
-                    HStack(alignment: .center, spacing: 16) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 64, height: 64)
-                            .clipShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
-
-                        texts
-                    }
-                } else {
-                    texts
-                }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var texts: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title.isEmpty ? "标题" : title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Palette.ink)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-
-            Text(subtitle.isEmpty ? "副标题" : subtitle)
-                .font(.subheadline)
-                .foregroundStyle(Palette.muted)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     // MARK: - 文案
 
-    private var copyEditor: some View {
-        VStack(spacing: 0) {
-            row("标题") {
-                TextField("标题", text: $title)
-                    .foregroundStyle(Palette.ink)
-            }
+    private var copyCard: some View {
+        card("文案") {
+            VStack(spacing: 0) {
+                fieldRow("标题") {
+                    TextField("标题", text: $title)
+                        .foregroundStyle(Palette.ink)
+                }
 
-            hairline
+                hairline
 
-            row("副标题") {
-                TextField("副标题", text: $subtitle)
-                    .foregroundStyle(Palette.ink)
+                fieldRow("副标题") {
+                    TextField("副标题", text: $subtitle)
+                        .foregroundStyle(Palette.ink)
+                }
             }
         }
     }
 
     // MARK: - 图片
 
-    private var imageEditor: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            label("图片")
+    private var imageCard: some View {
+        card("图片") {
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    thumb
 
-            HStack(spacing: 16) {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 44, height: 44)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-
-                Text(image == nil ? "没有图片时只显示两行文字" : "有图片时左侧显示封面")
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.muted)
-
-                Spacer(minLength: 0)
-            }
-
-            HStack(spacing: 22) {
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Text(image == nil ? "选择照片" : "更换照片")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(Palette.ink)
-                }
-
-                if image != nil {
-                    Button {
-                        clearImage()
-                    } label: {
-                        Text("移除")
-                            .font(.subheadline)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(image == nil ? "未选择图片" : "已选择图片")
+                            .foregroundStyle(Palette.ink)
+                        Text("有图时左图右文，无图只显示两行文字")
+                            .font(.footnote)
                             .foregroundStyle(Palette.muted)
+                            .lineLimit(2)
                     }
-                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
                 }
+                .padding(16)
+
+                hairline
+
+                HStack(spacing: 10) {
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        Text(image == nil ? "选择照片" : "更换照片")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 13)
+                            .foregroundStyle(Palette.canvas)
+                            .background(Capsule().fill(Palette.ink))
+                    }
+
+                    if image != nil {
+                        Button {
+                            clearImage()
+                        } label: {
+                            Text("移除")
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 13)
+                                .foregroundStyle(Palette.ink)
+                                .background(Capsule().fill(Palette.fill))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(16)
             }
         }
         .onChange(of: photoItem) { _, item in
@@ -160,7 +128,7 @@ struct DesignerView: View {
     // MARK: - 操作
 
     private var actions: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(spacing: 12) {
             Button {
                 start()
             } label: {
@@ -173,13 +141,16 @@ struct DesignerView: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 24) {
+            HStack(spacing: 10) {
                 Button {
                     update()
                 } label: {
                     Text("更新内容")
                         .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                         .foregroundStyle(Palette.ink)
+                        .background(Capsule().fill(Palette.fill))
                 }
                 .buttonStyle(.plain)
 
@@ -188,7 +159,10 @@ struct DesignerView: View {
                 } label: {
                     Text("结束活动")
                         .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
                         .foregroundStyle(Palette.muted)
+                        .background(Capsule().stroke(Palette.hairline, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -197,26 +171,37 @@ struct DesignerView: View {
                 Text(note)
                     .font(.footnote)
                     .foregroundStyle(Palette.muted)
+                    .padding(.top, 2)
             }
         }
     }
 
     // MARK: - 小工具
 
-    private func label(_ text: String) -> some View {
-        Text(text)
-            .font(.footnote)
-            .foregroundStyle(Palette.muted)
+    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.footnote)
+                .foregroundStyle(Palette.muted)
+                .padding(.leading, 4)
+
+            content()
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Palette.surface)
+                )
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 16) {
+    private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: 14) {
             Text(title)
-                .font(.subheadline)
                 .foregroundStyle(Palette.muted)
                 .frame(width: 56, alignment: .leading)
             content()
         }
+        .padding(.horizontal, 18)
         .padding(.vertical, 16)
     }
 
@@ -224,6 +209,27 @@ struct DesignerView: View {
         Rectangle()
             .fill(Palette.hairline)
             .frame(height: 0.5)
+            .padding(.leading, 18)
+    }
+
+    @ViewBuilder
+    private var thumb: some View {
+        if let image {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Palette.fill)
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Image(systemName: "photo")
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(Palette.muted)
+                )
+        }
     }
 
     // MARK: - 图片处理
@@ -238,14 +244,14 @@ struct DesignerView: View {
 
         image = picked
 
-        guard let thumb = makeThumbnail(from: picked) else {
+        guard let thumbnail = makeThumbnail(from: picked) else {
             imageBase64 = ""
             note = "图片转换失败"
             return
         }
 
-        imageBase64 = thumb.base64EncodedString()
-        note = "图片已就绪（\(max(1, thumb.count / 1024)) KB）"
+        imageBase64 = thumbnail.base64EncodedString()
+        note = "图片已就绪（\(max(1, thumbnail.count / 1024)) KB）"
     }
 
     private func clearImage() {
