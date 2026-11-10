@@ -1,6 +1,41 @@
 import ActivityKit
 import SwiftUI
+import UIKit
 import WidgetKit
+
+/// 图片 + 图标的统一缩略图，锁屏和灵动岛共用。
+struct Thumb: View {
+    let base64: String
+    let symbol: String
+    let size: CGFloat
+
+    private var radius: CGFloat { size * 0.28 }
+
+    private var decoded: UIImage? {
+        guard !base64.isEmpty, let data = Data(base64Encoded: base64) else { return nil }
+        return UIImage(data: data)
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(Color.white.opacity(0.10))
+
+            if let image = decoded {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: size * 0.42, weight: .regular))
+                    .foregroundStyle(.primary)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
 
 struct LockScreenView: View {
     let context: ActivityViewContext<DesignActivityAttributes>
@@ -12,9 +47,9 @@ struct LockScreenView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image(systemName: context.state.symbol)
-                    .font(.system(size: 20, weight: .regular))
-                    .foregroundStyle(.primary)
+                Thumb(base64: context.state.imageBase64,
+                      symbol: context.state.symbol,
+                      size: 52)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.state.title)
@@ -54,9 +89,9 @@ struct DesignActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: context.state.symbol)
-                        .font(.system(size: 18, weight: .regular))
-                        .foregroundStyle(.primary)
+                    Thumb(base64: context.state.imageBase64,
+                          symbol: context.state.symbol,
+                          size: 40)
                         .padding(.leading, 4)
                 }
 
@@ -92,8 +127,9 @@ struct DesignActivityWidget: Widget {
                     }
                 }
             } compactLeading: {
-                Image(systemName: context.state.symbol)
-                    .foregroundStyle(.primary)
+                Thumb(base64: context.state.imageBase64,
+                      symbol: context.state.symbol,
+                      size: 20)
             } compactTrailing: {
                 if context.state.showProgress {
                     Text("\(Int((context.state.progress * 100).rounded()))%")
@@ -105,8 +141,9 @@ struct DesignActivityWidget: Widget {
                         .frame(width: 6, height: 6)
                 }
             } minimal: {
-                Image(systemName: context.state.symbol)
-                    .foregroundStyle(.primary)
+                Thumb(base64: context.state.imageBase64,
+                      symbol: context.state.symbol,
+                      size: 20)
             }
         }
     }
