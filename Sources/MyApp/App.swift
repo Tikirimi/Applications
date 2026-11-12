@@ -7,7 +7,7 @@ import UIKit
 struct MyApp: App {
     var body: some Scene {
         WindowGroup {
-            DesignerView()
+            RootView()
         }
     }
 }
@@ -34,12 +34,15 @@ struct DesignerView: View {
     private var running: Bool { activity != nil }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            list
-            bottomBar
+        ZStack {
+            background
+
+            VStack(spacing: 0) {
+                topBar
+                list
+                bottomBar
+            }
         }
-        .background(Palette.canvas.ignoresSafeArea())
         .photosPicker(isPresented: $showPicker, selection: $photoItem, matching: .images)
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
@@ -48,6 +51,24 @@ struct DesignerView: View {
         .onChange(of: state) { _, newState in
             guard running else { return }
             scheduleUpdate(for: newState)
+        }
+    }
+
+    // MARK: - 背景（有图时是同一张图的模糊版）
+
+    @ViewBuilder
+    private var background: some View {
+        if let image {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .blur(radius: 40)
+                .overlay(Palette.canvas.opacity(0.58))
+                .clipped()
+                .ignoresSafeArea()
+        } else {
+            Palette.canvas.ignoresSafeArea()
         }
     }
 
@@ -67,7 +88,7 @@ struct DesignerView: View {
                 Button {
                     showPicker = true
                 } label: {
-                    Label("选择照片", systemImage: "photo")
+                    Label(image == nil ? "选择封面" : "更换封面", systemImage: "photo")
                 }
 
                 if image != nil {
@@ -105,7 +126,8 @@ struct DesignerView: View {
     private var list: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                imageRow
+                coverTile
+                coverHint
                 titleRow
                 subtitleRow
             }
@@ -115,28 +137,41 @@ struct DesignerView: View {
         .frame(maxHeight: .infinity)
     }
 
-    private var imageRow: some View {
+    /// 封面：一整块正方形，有图时被图片铺满，点它就能换图。
+    private var coverTile: some View {
         Button {
             showPicker = true
         } label: {
-            HStack(alignment: .top, spacing: 6) {
-                thumb
+            ZStack {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Palette.chip
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("封面图")
-                        .font(.body)
-                        .foregroundStyle(Palette.ink)
-                    Text(image == nil ? "未选择，只显示两行文字" : sizeText)
-                        .font(.footnote)
-                        .foregroundStyle(Palette.caption)
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo")
+                            .font(.system(size: 28, weight: .light))
+                        Text("选择封面")
+                            .font(.footnote)
+                    }
+                    .foregroundStyle(Palette.caption)
                 }
-
-                Spacer(minLength: 0)
             }
-            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private var coverHint: some View {
+        Text(image == nil ? "未选择封面时只显示两行文字" : "点击图片可更换封面")
+            .font(.footnote)
+            .foregroundStyle(Palette.caption)
+            .padding(.top, 8)
     }
 
     private var titleRow: some View {
@@ -163,27 +198,6 @@ struct DesignerView: View {
         .padding(.vertical, 16)
     }
 
-    @ViewBuilder
-    private var thumb: some View {
-        if let image {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(width: 64, height: 64)
-                .clipped()
-        } else {
-            Image(systemName: "photo")
-                .font(.system(size: 22, weight: .regular))
-                .foregroundStyle(Palette.caption)
-                .frame(width: 64, height: 64)
-                .background(Palette.chip)
-        }
-    }
-
-    private var sizeText: String {
-        "\(max(1, imageBase64.count / 1024)) KB"
-    }
-
     // MARK: - 底栏（只有启动 / 停止）
 
     private var bottomBar: some View {
@@ -205,7 +219,13 @@ struct DesignerView: View {
             }
         }
         .padding(8)
-        .background(Palette.canvas)
+        .background {
+            if image == nil {
+                Palette.canvas
+            } else {
+                Rectangle().fill(.ultraThinMaterial)
+            }
+        }
         .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: -4)
     }
 
