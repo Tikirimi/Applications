@@ -20,6 +20,7 @@ struct DesignerView: View {
     @State private var image: UIImage?
     @State private var imageBase64 = ""
     @State private var activity: Activity<DesignActivityAttributes>?
+    @State private var updateTask: Task<Void, Never>?
     @State private var note = ""
 
     private var state: DesignActivityAttributes.ContentState {
@@ -29,6 +30,8 @@ struct DesignerView: View {
             imageBase64: imageBase64
         )
     }
+
+    private var running: Bool { activity != nil }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,6 +44,10 @@ struct DesignerView: View {
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task { @MainActor in await loadImage(from: item) }
+        }
+        .onChange(of: state) { _, newState in
+            guard running else { return }
+            scheduleUpdate(for: newState)
         }
     }
 
@@ -69,12 +76,6 @@ struct DesignerView: View {
                     } label: {
                         Label("移除封面", systemImage: "trash")
                     }
-                }
-
-                Button(role: .destructive) {
-                    end()
-                } label: {
-                    Label("结束活动", systemImage: "stop.circle")
                 }
             } label: {
                 Image(systemName: "ellipsis")
@@ -125,7 +126,7 @@ struct DesignerView: View {
                     Text("封面图")
                         .font(.body)
                         .foregroundStyle(Palette.ink)
-                    Text(image == nil ? "未选择" : sizeText)
+                    Text(image == nil ? "未选择，只显示两行文字" : sizeText)
                         .font(.footnote)
                         .foregroundStyle(Palette.caption)
                 }
@@ -140,10 +141,10 @@ struct DesignerView: View {
 
     private var titleRow: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TextField("标题", text: $title)
+            TextField("第一行文字", text: $title)
                 .font(.body)
                 .foregroundStyle(Palette.ink)
-            Text("第一行文字")
+            Text("实时活动的第一行")
                 .font(.footnote)
                 .foregroundStyle(Palette.caption)
         }
@@ -152,10 +153,10 @@ struct DesignerView: View {
 
     private var subtitleRow: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TextField("副标题", text: $subtitle)
+            TextField("第二行文字", text: $subtitle)
                 .font(.body)
                 .foregroundStyle(Palette.ink)
-            Text("第二行文字，留空则只显示一行")
+            Text("实时活动的第二行，留空则只显示一行")
                 .font(.footnote)
                 .foregroundStyle(Palette.caption)
         }
@@ -183,7 +184,7 @@ struct DesignerView: View {
         "\(max(1, imageBase64.count / 1024)) KB"
     }
 
-    // MARK: - 底栏
+    // MARK: - 底栏（只有启动 / 停止）
 
     private var bottomBar: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -195,9 +196,12 @@ struct DesignerView: View {
             }
 
             HStack(spacing: 8) {
-                barButton("启动", filled: true) { start() }
-                barButton("更新", filled: false) { update() }
-                barButton("结束", filled: false) { end() }
+                barButton("启动实时活动", filled: true, enabled: !running) {
+                    start()
+                }
+                barButton("停止", filled: false, enabled: running) {
+                    stop()
+                }
             }
         }
         .padding(8)
@@ -205,7 +209,12 @@ struct DesignerView: View {
         .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: -4)
     }
 
-    private func barButton(_ label: String, filled: Bool, action: @escaping () -> Void) -> some View {
+    private func barButton(
+        _ label: String,
+        filled: Bool,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 15, weight: .medium))
@@ -218,6 +227,8 @@ struct DesignerView: View {
                 )
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
     }
 
     // MARK: - 图片处理
@@ -239,14 +250,14 @@ struct DesignerView: View {
         }
 
         imageBase64 = thumbnail.base64EncodedString()
-        note = "封面已更新（\(max(1, thumbnail.count / 1024)) KB）"
+        note = running ? "封面已同步到实时活动" : "封面已就绪（\(max(1, thumbnail.count / 1024)) KB）"
     }
 
     private func clearImage() {
         image = nil
         imageBase64 = ""
         photoItem = nil
-        note = "已移除封面"
+        note = running ? "封面已移除" : "已移除封面"
     }
 
     /// 实时活动状态有 4KB 上限，只能放缩略图：逐步压到 ≤1600 字节。
@@ -296,10 +307,13 @@ struct DesignerView: View {
     // MARK: - ActivityKit
 
     private func start() {
+        guard !running else { return }
+
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             note = "系统未允许实时活动，请到 设置 → 通知 打开"
             return
         }
+
         let content = state
         Task { @MainActor in
             do {
@@ -316,27 +330,24 @@ struct DesignerView: View {
         }
     }
 
-    private func update() {
-        guard let activity else {
-            note = "还没有活动，先启动一个"
-            return
-        }
-        let content = state
+    private func stop() {
+        guard let activity else { return }
+
         Task { @MainActor in
-            await activity.update(ActivityContent(state: content, staleDate: nil))
-            note = "内容已更新"
+            await activity.end(nil, dismissalPolicy: .immediate)
+            updateTask?.cancel()
+            self.activity = nil
+            note = "已停止"
         }
     }
 
-    private func end() {
-        guard let activity else {
-            note = "还没有活动"
-            return
-        }
-        Task { @MainActor in
-            await activity.end(nil, dismissalPolicy: .immediate)
-            self.activity = nil
-            note = "活动已结束"
+    /// 活动运行中改文字或换图，自动同步，不需要额外的“更新”按钮。
+    private func scheduleUpdate(for content: DesignActivityAttributes.ContentState) {
+        updateTask?.cancel()
+        updateTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled, let activity else { return }
+            await activity.update(ActivityContent(state: content, staleDate: nil))
         }
     }
 }
