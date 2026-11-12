@@ -8,6 +8,48 @@ private func decode(_ base64: String) -> UIImage? {
     return UIImage(data: data)
 }
 
+/// 只走一行：放得下就静态显示，放不下就横向来回滚动。
+struct MarqueeText: View {
+    let text: String
+    let font: Font
+    let color: Color
+
+    @State private var contentWidth: CGFloat = 0
+    @State private var offset: CGFloat = 0
+    @State private var started = false
+
+    var body: some View {
+        GeometryReader { box in
+            Text(text)
+                .font(font)
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.onAppear { contentWidth = proxy.size.width }
+                    }
+                )
+                .offset(x: offset)
+                .onAppear {
+                    guard !started else { return }
+                    started = true
+                    DispatchQueue.main.async {
+                        let overflow = contentWidth - box.size.width
+                        guard overflow > 1 else { return }
+                        withAnimation(
+                            .linear(duration: Double(overflow) / 24)
+                                .repeatForever(autoreverses: true)
+                        ) {
+                            offset = -overflow
+                        }
+                    }
+                }
+        }
+        .clipped()
+    }
+}
+
 /// 锁屏：有图 → 左图右文；无图 → 只有两行文字。
 struct LockScreenView: View {
     let context: ActivityViewContext<DesignActivityAttributes>
@@ -59,33 +101,32 @@ struct DesignActivityWidget: Widget {
             LockScreenView(context: context)
         } dynamicIsland: { context in
             let image = decode(context.state.imageBase64)
+            let scrollText = context.state.subtitle.isEmpty
+                ? context.state.title
+                : "\(context.state.title) · \(context.state.subtitle)"
 
             return DynamicIsland {
+                // 左边：图片
                 DynamicIslandExpandedRegion(.leading) {
                     if let image {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 34, height: 34)
+                            .frame(width: 36, height: 36)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                            .padding(.leading, 6)
+                            .padding(.leading, 8)
                     }
                 }
 
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(context.state.title)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-
-                        if !context.state.subtitle.isEmpty {
-                            Text(context.state.subtitle)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                    }
+                // 右边：滚动文本
+                DynamicIslandExpandedRegion(.trailing) {
+                    MarqueeText(
+                        text: scrollText,
+                        font: .headline,
+                        color: .primary
+                    )
+                    .frame(width: 120, height: 22)
+                    .padding(.trailing, 10)
                 }
             } compactLeading: {
                 if let image {
@@ -94,13 +135,18 @@ struct DesignActivityWidget: Widget {
                         .scaledToFill()
                         .frame(width: 20, height: 20)
                         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                }
-            } compactTrailing: {
-                if image == nil {
+                } else {
                     Circle()
                         .fill(.primary)
                         .frame(width: 6, height: 6)
                 }
+            } compactTrailing: {
+                MarqueeText(
+                    text: context.state.title,
+                    font: .caption2,
+                    color: .primary
+                )
+                .frame(width: 52, height: 14)
             } minimal: {
                 if let image {
                     Image(uiImage: image)
