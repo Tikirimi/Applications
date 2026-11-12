@@ -16,6 +16,7 @@ struct DesignerView: View {
     @State private var title = "进行中"
     @State private var subtitle = "一个安静的实时活动"
     @State private var photoItem: PhotosPickerItem?
+    @State private var showPicker = false
     @State private var image: UIImage?
     @State private var imageBase64 = ""
     @State private var activity: Activity<DesignActivityAttributes>?
@@ -30,186 +31,135 @@ struct DesignerView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 26) {
-                    copyCard
-                    imageCard
-                    actions
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 48)
-            }
-            .background(Palette.canvas.ignoresSafeArea())
-            .toolbarBackground(Palette.canvas, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
-            .navigationTitle("实时活动")
-            .navigationBarTitleDisplayMode(.large)
+        VStack(spacing: 0) {
+            topBar
+            list
+            bottomBar
         }
-    }
-
-    // MARK: - 文案
-
-    private var copyCard: some View {
-        card("文案") {
-            VStack(spacing: 0) {
-                fieldRow("标题") {
-                    TextField("标题", text: $title)
-                        .foregroundStyle(Palette.ink)
-                }
-
-                hairline
-
-                fieldRow("副标题") {
-                    TextField("副标题", text: $subtitle)
-                        .foregroundStyle(Palette.ink)
-                }
-            }
-        }
-    }
-
-    // MARK: - 图片
-
-    private var imageCard: some View {
-        card("图片") {
-            VStack(spacing: 0) {
-                HStack(spacing: 14) {
-                    thumb
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(image == nil ? "未选择图片" : "已选择图片")
-                            .foregroundStyle(Palette.ink)
-                        Text("有图时左图右文，无图只显示两行文字")
-                            .font(.footnote)
-                            .foregroundStyle(Palette.muted)
-                            .lineLimit(2)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-                .padding(16)
-
-                hairline
-
-                HStack(spacing: 10) {
-                    PhotosPicker(selection: $photoItem, matching: .images) {
-                        Text(image == nil ? "选择照片" : "更换照片")
-                            .font(.subheadline.weight(.medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .foregroundStyle(Palette.canvas)
-                            .background(Capsule().fill(Palette.ink))
-                    }
-
-                    if image != nil {
-                        Button {
-                            clearImage()
-                        } label: {
-                            Text("移除")
-                                .font(.subheadline)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 13)
-                                .foregroundStyle(Palette.ink)
-                                .background(Capsule().fill(Palette.fill))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(16)
-            }
-        }
+        .background(Palette.canvas.ignoresSafeArea())
+        .photosPicker(isPresented: $showPicker, selection: $photoItem, matching: .images)
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task { @MainActor in await loadImage(from: item) }
         }
     }
 
-    // MARK: - 操作
+    // MARK: - 顶栏
 
-    private var actions: some View {
-        VStack(spacing: 12) {
-            Button {
-                start()
-            } label: {
-                Text("启动实时活动")
-                    .font(.body.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .foregroundStyle(Palette.canvas)
-                    .background(Capsule().fill(Palette.ink))
-            }
-            .buttonStyle(.plain)
+    private var topBar: some View {
+        HStack(spacing: 6) {
+            chip("MyApp")
+            Text("/")
+                .font(.footnote)
+                .foregroundStyle(Palette.caption)
+            chip("实时活动")
 
-            HStack(spacing: 10) {
+            Spacer(minLength: 8)
+
+            Menu {
                 Button {
-                    update()
+                    showPicker = true
                 } label: {
-                    Text("更新内容")
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .foregroundStyle(Palette.ink)
-                        .background(Capsule().fill(Palette.fill))
+                    Label("选择照片", systemImage: "photo")
                 }
-                .buttonStyle(.plain)
 
-                Button {
+                if image != nil {
+                    Button(role: .destructive) {
+                        clearImage()
+                    } label: {
+                        Label("移除封面", systemImage: "trash")
+                    }
+                }
+
+                Button(role: .destructive) {
                     end()
                 } label: {
-                    Text("结束活动")
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .foregroundStyle(Palette.muted)
-                        .background(Capsule().stroke(Palette.hairline, lineWidth: 1))
+                    Label("结束活动", systemImage: "stop.circle")
                 }
-                .buttonStyle(.plain)
-            }
-
-            if !note.isEmpty {
-                Text(note)
-                    .font(.footnote)
-                    .foregroundStyle(Palette.muted)
-                    .padding(.top, 2)
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.ink)
+                    .frame(width: 30, height: 30)
+                    .overlay(Circle().strokeBorder(Palette.ink, lineWidth: 1.5))
             }
         }
+        .padding(16)
     }
 
-    // MARK: - 小工具
+    private func chip(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Palette.ink)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Palette.chip)
+            )
+    }
 
-    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
+    // MARK: - 列表
+
+    private var list: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 0) {
+                imageRow
+                titleRow
+                subtitleRow
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var imageRow: some View {
+        Button {
+            showPicker = true
+        } label: {
+            HStack(alignment: .top, spacing: 6) {
+                thumb
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("封面图")
+                        .font(.body)
+                        .foregroundStyle(Palette.ink)
+                    Text(image == nil ? "未选择" : sizeText)
+                        .font(.footnote)
+                        .foregroundStyle(Palette.caption)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 16)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var titleRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TextField("标题", text: $title)
+                .font(.body)
+                .foregroundStyle(Palette.ink)
+            Text("第一行文字")
                 .font(.footnote)
-                .foregroundStyle(Palette.muted)
-                .padding(.leading, 4)
-
-            content()
-                .background(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Palette.surface)
-                )
+                .foregroundStyle(Palette.caption)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func fieldRow<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: 14) {
-            Text(title)
-                .foregroundStyle(Palette.muted)
-                .frame(width: 56, alignment: .leading)
-            content()
-        }
-        .padding(.horizontal, 18)
         .padding(.vertical, 16)
     }
 
-    private var hairline: some View {
-        Rectangle()
-            .fill(Palette.hairline)
-            .frame(height: 0.5)
-            .padding(.leading, 18)
+    private var subtitleRow: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TextField("副标题", text: $subtitle)
+                .font(.body)
+                .foregroundStyle(Palette.ink)
+            Text("第二行文字，留空则只显示一行")
+                .font(.footnote)
+                .foregroundStyle(Palette.caption)
+        }
+        .padding(.vertical, 16)
     }
 
     @ViewBuilder
@@ -218,18 +168,56 @@ struct DesignerView: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFill()
-                .frame(width: 44, height: 44)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(width: 64, height: 64)
+                .clipped()
         } else {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Palette.fill)
-                .frame(width: 44, height: 44)
-                .overlay(
-                    Image(systemName: "photo")
-                        .font(.system(size: 16, weight: .regular))
-                        .foregroundStyle(Palette.muted)
+            Image(systemName: "photo")
+                .font(.system(size: 22, weight: .regular))
+                .foregroundStyle(Palette.caption)
+                .frame(width: 64, height: 64)
+                .background(Palette.chip)
+        }
+    }
+
+    private var sizeText: String {
+        "\(max(1, imageBase64.count / 1024)) KB"
+    }
+
+    // MARK: - 底栏
+
+    private var bottomBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !note.isEmpty {
+                Text(note)
+                    .font(.footnote)
+                    .foregroundStyle(Palette.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            HStack(spacing: 8) {
+                barButton("启动", filled: true) { start() }
+                barButton("更新", filled: false) { update() }
+                barButton("结束", filled: false) { end() }
+            }
+        }
+        .padding(8)
+        .background(Palette.canvas)
+        .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: -4)
+    }
+
+    private func barButton(_ label: String, filled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 15, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .foregroundStyle(filled ? Palette.canvas : Palette.ink)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(filled ? Palette.ink : Palette.chip)
                 )
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 图片处理
@@ -251,14 +239,14 @@ struct DesignerView: View {
         }
 
         imageBase64 = thumbnail.base64EncodedString()
-        note = "图片已就绪（\(max(1, thumbnail.count / 1024)) KB）"
+        note = "封面已更新（\(max(1, thumbnail.count / 1024)) KB）"
     }
 
     private func clearImage() {
         image = nil
         imageBase64 = ""
         photoItem = nil
-        note = "已移除图片"
+        note = "已移除封面"
     }
 
     /// 实时活动状态有 4KB 上限，只能放缩略图：逐步压到 ≤1600 字节。

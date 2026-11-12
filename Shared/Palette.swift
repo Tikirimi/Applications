@@ -18,34 +18,26 @@ enum Palette {
         })
     }
 
-    /// 页面底色：浅色 #F2F4ED，深色 #141414（近黑的深灰）
+    /// 页面底色：浅色 #F2F4ED，深色 #141414
     static var canvas: Color {
         dynamic(light: rgb(0xF2F4ED), dark: rgb(0x141414))
     }
 
-    /// 卡片底色：浅色纯白，深色 #1C1C1C
-    static var surface: Color {
-        dynamic(light: .white, dark: rgb(0x1C1C1C))
-    }
-
-    /// 次级控件（未选中的圆形按钮、次按钮）
-    static var fill: Color {
-        dynamic(light: rgb(0xECEEE6), dark: rgb(0x242424))
+    /// 药丸/按钮底色
+    static var chip: Color {
+        dynamic(light: rgb(0xE7E9E2), dark: rgb(0x242424))
     }
 
     /// 主文字
     static var ink: Color { Color(uiColor: .label) }
 
-    /// 次要文字
-    static var muted: Color { Color(uiColor: .secondaryLabel) }
+    /// 说明文字
+    static var caption: Color {
+        dynamic(light: rgb(0x7B7D75), dark: rgb(0x8C8C8C))
+    }
 
     /// 分隔线
     static var hairline: Color {
         dynamic(light: rgb(0xE2E4DC), dark: rgb(0x2C2C2C))
-    }
-
-    /// 进度条底色
-    static var track: Color {
-        dynamic(light: rgb(0xE2E4DC), dark: rgb(0x3A3A3A))
     }
 }
