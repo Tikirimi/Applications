@@ -50,7 +50,7 @@ struct MarqueeText: View {
     }
 }
 
-/// 锁屏：有图 → 左图右文；无图 → 只有两行文字。
+/// 锁屏：有图 → 左图右文；无图 → 只有一行文字。
 struct LockScreenView: View {
     let context: ActivityViewContext<DesignActivityAttributes>
 
@@ -66,32 +66,21 @@ struct LockScreenView: View {
                         .frame(width: 54, height: 54)
                         .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
 
-                    texts
+                    Text(context.state.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             } else {
-                texts
+                Text(context.state.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(16)
-    }
-
-    private var texts: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(context.state.title)
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-
-            if !context.state.subtitle.isEmpty {
-                Text(context.state.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -101,9 +90,6 @@ struct DesignActivityWidget: Widget {
             LockScreenView(context: context)
         } dynamicIsland: { context in
             let image = decode(context.state.imageBase64)
-            let scrollText = context.state.subtitle.isEmpty
-                ? context.state.title
-                : "\(context.state.title) · \(context.state.subtitle)"
 
             return DynamicIsland {
                 // 左边：图片
@@ -121,11 +107,11 @@ struct DesignActivityWidget: Widget {
                 // 右边：滚动文本
                 DynamicIslandExpandedRegion(.trailing) {
                     MarqueeText(
-                        text: scrollText,
+                        text: context.state.title,
                         font: .headline,
                         color: .primary
                     )
-                    .frame(width: 120, height: 22)
+                    .frame(width: 140, height: 22)
                     .padding(.trailing, 10)
                 }
             } compactLeading: {

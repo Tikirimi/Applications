@@ -14,7 +14,6 @@ struct MyApp: App {
 
 struct DesignerView: View {
     @State private var title = "进行中"
-    @State private var subtitle = "一个安静的实时活动"
     @State private var photoItem: PhotosPickerItem?
     @State private var showPicker = false
     @State private var image: UIImage?
@@ -26,7 +25,6 @@ struct DesignerView: View {
     private var state: DesignActivityAttributes.ContentState {
         DesignActivityAttributes.ContentState(
             title: title,
-            subtitle: subtitle,
             imageBase64: imageBase64
         )
     }
@@ -129,7 +127,6 @@ struct DesignerView: View {
                 coverTile
                 coverHint
                 titleRow
-                subtitleRow
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
@@ -168,7 +165,7 @@ struct DesignerView: View {
     }
 
     private var coverHint: some View {
-        Text(image == nil ? "未选择封面时只显示两行文字" : "点击图片可更换封面")
+        Text(image == nil ? "未选择封面时只显示一行文字" : "点击图片可更换封面")
             .font(.footnote)
             .foregroundStyle(Palette.caption)
             .padding(.top, 8)
@@ -176,22 +173,10 @@ struct DesignerView: View {
 
     private var titleRow: some View {
         VStack(alignment: .leading, spacing: 2) {
-            TextField("第一行文字", text: $title)
+            TextField("一行文字", text: $title)
                 .font(.body)
                 .foregroundStyle(Palette.ink)
-            Text("实时活动的第一行")
-                .font(.footnote)
-                .foregroundStyle(Palette.caption)
-        }
-        .padding(.vertical, 16)
-    }
-
-    private var subtitleRow: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            TextField("第二行文字", text: $subtitle)
-                .font(.body)
-                .foregroundStyle(Palette.ink)
-            Text("实时活动的第二行，留空则只显示一行")
+            Text("实时活动只显示这一行，太长会滚动")
                 .font(.footnote)
                 .foregroundStyle(Palette.caption)
         }
